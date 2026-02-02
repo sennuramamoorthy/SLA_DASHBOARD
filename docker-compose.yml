@@ -1,0 +1,77 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: sla-postgres
+    environment:
+      POSTGRES_DB: sladb
+      POSTGRES_USER: slauser
+      POSTGRES_PASSWORD: slapass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slauser -d sladb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailserver:
+    image: greenmail/standalone:2.0.1
+    container_name: sla-greenmail
+    ports:
+      - "3025:3025"   # SMTP
+      - "3110:3110"   # POP3
+      - "3143:3143"   # IMAP
+      - "3465:3465"   # SMTPS
+      - "3993:3993"   # IMAPS
+      - "8082:8080"   # GreenMail API
+    environment:
+      GREENMAIL_OPTS: "-Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled"
+
+  app:
+    build: .
+    container_name: sla-dashboard
+    depends_on:
+      db:
+        condition: service_healthy
+      mailserver:
+        condition: service_started
+    ports:
+      - "8081:8080"
+    environment:
+      # Database
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: sladb
+      DB_USERNAME: slauser
+      DB_PASSWORD: slapass
+      # IMAP Configuration (GreenMail for testing)
+      IMAP_HOST: mailserver
+      IMAP_PORT: 3143
+      IMAP_USERNAME: test@test.com
+      IMAP_PASSWORD: test
+      IMAP_FOLDER: INBOX
+      IMAP_SSL: "false"
+      # SMTP Configuration (Gmail)
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USERNAME: sennuramamoorthy@gmail.com
+      SMTP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      # Summary email settings
+      SUMMARY_RECIPIENT: sennuramamoorthy@gmail.com
+      SUMMARY_FROM: sennuramamoorthy@gmail.com
+      SUMMARY_CRON: "0 0 18 * * ?"
+      # Scheduler - disabled for manual testing
+      SCHEDULER_ENABLED: "false"
+      EMAIL_CHECK_INTERVAL: "60000"
+      # Logging
+      LOG_LEVEL: INFO
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
