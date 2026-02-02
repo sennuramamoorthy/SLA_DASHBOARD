@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: sla-dashboard
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:sladb}
+    username: ${DB_USERNAME:slauser}
+    password: ${DB_PASSWORD:slapass}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+  thymeleaf:
+    check-template-location: true
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# Email monitoring configuration (IMAP)
+email:
+  imap:
+    host: ${IMAP_HOST:imap.gmail.com}
+    port: ${IMAP_PORT:993}
+    username: ${IMAP_USERNAME}
+    password: ${IMAP_PASSWORD}
+    folder: ${IMAP_FOLDER:INBOX}
+    ssl: ${IMAP_SSL:true}
+  summary:
+    recipient: ${SUMMARY_RECIPIENT}
+    from: ${SUMMARY_FROM:noreply@sla-dashboard.local}
+
+# Scheduler configuration
+scheduler:
+  enabled: ${SCHEDULER_ENABLED:true}
+  email-check:
+    interval-ms: ${EMAIL_CHECK_INTERVAL:300000}  # 5 minutes
+  daily-init:
+    cron: "0 0 0 * * ?"  # Midnight
+  mark-missed:
+    cron: "0 0 * * * ?"  # Every hour
+  daily-summary:
+    cron: ${SUMMARY_CRON:0 0 18 * * ?}  # 6 PM
+
+logging:
+  level:
+    com.sla.dashboard: ${LOG_LEVEL:INFO}
+    org.springframework.mail: WARN
